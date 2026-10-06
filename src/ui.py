@@ -119,6 +119,10 @@ def get_context(title: str, icon: str = "⏱️", subtitle: str = "") -> Ctx:
     f_types = sb.multiselect("Type de pause", types, key=FILTER_PREFIX + "types")
     opts = [slot_label(m) for m in range(0, 1441, 30)]
     st.session_state.setdefault(FILTER_PREFIX + "plage", ("00:00", "24:00"))
+    # valeur persistée invalide (autre version de Streamlit, ancienne session) -> retour au défaut
+    cur = st.session_state[FILTER_PREFIX + "plage"]
+    if not (isinstance(cur, (tuple, list)) and len(cur) == 2 and all(c in opts for c in cur)):
+        st.session_state[FILTER_PREFIX + "plage"] = ("00:00", "24:00")
     plage = sb.select_slider("Plage horaire", options=opts, key=FILTER_PREFIX + "plage")
     f_stat = sb.radio("Statut agent", ["Tous", "En dépassement", "Normal"], key=FILTER_PREFIX + "stat", horizontal=True)
 
@@ -144,7 +148,13 @@ def get_context(title: str, icon: str = "⏱️", subtitle: str = "") -> Ctx:
 
     rh_count = int((rh.df["login"] != "").sum()) if rh is not None and rh.df is not None else None
     ds = calc.build_dataset(parsed, match, rules, rh_count)
-    lo, hi = (int(p[:2]) * 60 + int(p[3:]) for p in plage)
+    def _to_min(p) -> int:
+        h, m = str(p).split(":")
+        return int(h) * 60 + int(m)
+
+    if not (isinstance(plage, (tuple, list)) and len(plage) == 2):
+        plage = ("00:00", "24:00")
+    lo, hi = _to_min(plage[0]), _to_min(plage[1])
     view = calc.apply_filters(ds, calc.Filters(tuple(f_dates), tuple(f_eq), tuple(f_sup), tuple(f_ag),
                                                tuple(f_types), (lo, hi), f_stat))
     sim = calc.simultaneity(view, rules, rh_count)
