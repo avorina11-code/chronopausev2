@@ -143,6 +143,9 @@ for col, (page, label, icon) in zip(cols, [("pages/01_Dashboard.py", "Dashboard"
     col.page_link(page, label=label, icon=icon)
 
 with st.expander("Aperçu des données brutes (copie en lecture seule)"):
-    sh = st.selectbox("Feuille", m["feuilles"], key="prev_sheet") if len(m["feuilles"]) > 1 else m["feuilles"][0]
-    st.dataframe(cached_grids(f_pause.getvalue(), f_pause.name)[sh].dropna(how="all").dropna(how="all", axis=1).head(40)
-                 .astype(str), use_container_width=True) if f_pause is not None else st.caption("Rechargez le fichier pour l'aperçu.")
+    if f_pause is None:
+        st.caption("Rechargez le fichier pour l'aperçu.")
+    else:
+        sh = st.selectbox("Feuille", m["feuilles"], key="prev_sheet") if len(m["feuilles"]) > 1 else m["feuilles"][0]
+        preview = cached_grids(f_pause.getvalue(), f_pause.name)[sh].dropna(how="all").dropna(how="all", axis=1).head(40)
+        st.dataframe(preview.astype(str), use_container_width=True)
