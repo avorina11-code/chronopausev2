@@ -144,7 +144,18 @@ def get_context(title: str, icon: str = "⏱️", subtitle: str = "") -> Ctx:
 
     rh_count = int((rh.df["login"] != "").sum()) if rh is not None and rh.df is not None else None
     ds = calc.build_dataset(parsed, match, rules, rh_count)
-    lo, hi = (int(p[:2]) * 60 + int(p[3:]) for p in plage)
+    def parse_time_to_minutes(p):
+    if not p or not isinstance(p, str):
+        return 0
+    parts = p.strip().split(":")
+    if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+        return int(parts[0]) * 60 + int(parts[1])
+    return 0
+
+if isinstance(plage, (list, tuple)) and len(plage) == 2:
+    lo, hi = parse_time_to_minutes(plage[0]), parse_time_to_minutes(plage[1])
+else:
+    lo, hi = 0, 1439  # Valeur par défaut (00:00 à 23:59) si la plage est invalide
     view = calc.apply_filters(ds, calc.Filters(tuple(f_dates), tuple(f_eq), tuple(f_sup), tuple(f_ag),
                                                tuple(f_types), (lo, hi), f_stat))
     sim = calc.simultaneity(view, rules, rh_count)
