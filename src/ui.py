@@ -8,7 +8,7 @@ import pandas as pd
 import streamlit as st
 
 from . import calculations as calc
-from .config import Rules, fmt_duration, fmt_int, slot_label
+from .config import Rules, fmt_duration, fmt_int, fmt_ms, slot_label
 from .models import ParsedPauses, RHData
 from .rh_matching import match_agents
 from .visualizations import type_colors
@@ -203,3 +203,51 @@ def kpi_grid(k: dict, rules: Rules) -> None:
 
 def display_df(df: pd.DataFrame, **kw) -> None:
     st.dataframe(df, use_container_width=True, hide_index=True, **kw)
+
+
+def slot_detail(view, fig, key: str) -> None:
+    """Affiche le graphique ; un clic sur une barre (ou le menu) liste les agents en pause dans la tranche."""
+    clicked = None
+    try:
+        ev = st.plotly_chart(fig, use_container_width=True, key=key, on_select="rerun", selection_mode="points")
+        pts = ev.selection.points if ev is not None and ev.selection else []
+        if pts:
+            clicked = str(pts[0].get("x"))
+    except TypeError:                                    # Streamlit < 1.35 : pas de sélection sur graphique
+        st.plotly_chart(fig, use_container_width=True)
+
+    s_all = view.slots
+    slots_present = sorted(s_all["slot_start_min"].dropna().unique())
+    labels = {slot_label(m): m for m in slots_present}
+    opts = ["—"] + list(labels)
+    pick = st.selectbox("🔎 Agents d'une tranche (clic sur une barre ou choix ici)", opts,
+                        index=opts.index(clicked) if clicked in labels else 0, key=key + "_pick")
+    if clicked in labels:
+        pick = clicked
+    if pick == "—":
+        st.caption("Cliquez sur une barre de l'histogramme pour voir qui était en pause sur la tranche.")
+        return
+
+    m = labels[pick]
+    s = s_all[(s_all["slot_start_min"] == m) & (s_all["seconds"] > 0)]
+    st.markdown(f"**Tranche {pick} - {slot_label(m + 30)}** · {s['login'].nunique()} agent(s) distinct(s)")
+    if s.empty:
+        st.info("Aucun agent en pause sur cette tranche.")
+        return
+
+    day_tot = s_all.groupby(["date", "login"])["seconds"].sum().rename("total_jour_s")
+    g = (s.groupby(["date", "login", "nom_affiche", "type_pause"])["seconds"].sum().reset_index())
+    g["detail"] = g["type_pause"] + " (" + g["seconds"].map(fmt_ms) + ")"
+    t = (g.groupby(["date", "login", "nom_affiche"])
+           .agg(types=("detail", " · ".join), secondes=("seconds", "sum")).reset_index()
+           .join(day_tot, on=["date", "login"]).sort_values("secondes", ascending=False))
+    out = pd.DataFrame({
+        "Date": t["date"].map(lambda d: d.strftime("%d/%m/%Y")),
+        "Agent": t["nom_affiche"], "Login": t["login"],
+        "Durée dans la tranche": t["secondes"].map(fmt_ms),
+        "Détail par type": t["types"],
+        "Total pause de la journée": t["total_jour_s"].map(fmt_ms),
+    })
+    if out["Date"].nunique() == 1:
+        out = out.drop(columns="Date")
+    display_df(out)
