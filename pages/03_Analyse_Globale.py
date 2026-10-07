@@ -24,7 +24,7 @@ with t1:
     metric = st.radio("Mesure", ["blocs_entames", "minutes", "agents"], horizontal=True,
                       format_func={"blocs_entames": "Pauses entamées", "minutes": "Minutes de pause", "agents": "Agents distincts"}.get)
     bs = calc.by_slot(v)
-    st.plotly_chart(viz.fig_distribution(bs, metric), use_container_width=True)
+    ui.slot_detail(v, viz.fig_distribution(bs, metric), key="glob_dist")
     if len(bs):
         top = bs.sort_values(metric, ascending=False).iloc[0]
         st.info(f"Créneau le plus chargé : **{top['tranche']}** ({top[metric]:.0f}).")
