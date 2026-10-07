@@ -23,7 +23,7 @@ if k["n_agents"] == 0 or v.slots.empty:
     st.stop()
 
 bs = calc.by_slot(v)
-st.plotly_chart(viz.fig_distribution(bs, "blocs_entames", "Distribution des pauses par créneau (pauses entamées)"), use_container_width=True)
+ui.slot_detail(v, viz.fig_distribution(bs, "blocs_entames", "Distribution des pauses par créneau (pauses entamées)"), key="dash_dist")
 
 a, b = st.columns(2)
 bt = calc.by_type(v)
