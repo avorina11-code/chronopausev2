@@ -36,6 +36,7 @@ def fig_distribution(bs: pd.DataFrame, metric: str = "blocs_entames", title: str
                title=title or labels[metric])
     f.update_traces(marker_color="#1F6FEB", hovertemplate="%{x}<br>%{y:.0f}<extra></extra>")
     f.update_layout(**LAYOUT, height=340, xaxis_title="Créneau de 30 min (heure de début)", yaxis_title=labels[metric])
+    f.update_layout(clickmode="event+select")
     return f
 
 
